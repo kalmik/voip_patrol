@@ -38,10 +38,68 @@ void TestCall::onCallTsxState(OnCallTsxStateParam &prm) {
 	PJ_UNUSED_ARG(prm);
 	CallInfo ci = getInfo();
 	LOG(logDEBUG) <<"[CallTsx]["<<getId()<<"]["<<ci.remoteUri<<"]["<<ci.stateText<<"]id["<<ci.callIdString<<"]";
+	// std::vector<CallMediaInfo> CallMediaInfoVector = ci.media;
 }
 
+void TestCall::onStreamDestroyed(OnStreamDestroyedParam &prm) {
+	LOG(logINFO) << "[onStreamDestroyed] idx["<<prm.streamIdx<<"]";
+	pjmedia_stream const *pj_stream = (pjmedia_stream *)&prm.stream;
+	pjmedia_stream_info *pj_stream_info;
+//	pjmedia_stream_get_info(pj_stream, pj_stream_info);
+//	LOG(logINFO) <<"rx_pkt:"<< pj_stream_info->rx_pt << " jb_max:" <<pj_stream_info->jb_max << "\n";
+
+// //	MediaStream const &stream = prm.stream;
+
+//	LOG(logINFO) <<"RTP remote IP: "<< pj_inet_ntoa(pj_stream_info->rem_addr.ipv4.sin_addr)<<"\n";
+//	// pjmedia_endpt *endpt = pjstream->endpt;
+//	// MediaTransport const &transport = prm.transport;
+//	// pjmedia_transport *transport = pjstream->transport;
+//	// LOG(logERROR) << 
+	try {
+		StreamStat const &stats = getStreamStat(prm.streamIdx);
+		RtcpStat rtcp = stats.rtcp;
+		RtcpStreamStat rxStat = rtcp.rxStat;
+		RtcpStreamStat txStat = rtcp.txStat;
+		LOG(logINFO) << "RTCP pkt_rx:"<<rxStat.pkt<<" pkt_tx:"<<txStat.pkt<<std::endl;
+	} catch (pj::Error e)  {
+			LOG(logERROR) << "error :" << e.status << std::endl;
+	}
+}
+
+// onCallMediaState(OnCallMediaStateParam &prm)
+
 void TestCall::onStreamCreated(OnStreamCreatedParam &prm) {
-	LOG(logDEBUG) << "[onStreamCreated]";
+
+	LOG(logINFO) << "[onStreamCreated] idx["<<prm.streamIdx<<"]\n";
+	pjmedia_stream const *pj_stream = (pjmedia_stream *)&prm.stream;
+	pjmedia_stream_info *pj_stream_info;
+	pjmedia_stream_get_info(pj_stream, pj_stream_info);
+	LOG(logINFO) <<"rx_pkt:"<< pj_stream_info->rx_pt << " jb_max:" <<pj_stream_info->jb_max << "\n";
+//	pjmedia_stream const *pj_stream = (pjmedia_stream *)prm.stream;
+//	pjmedia_stream_info *pj_stream_info;
+//	pjmedia_stream_get_info(pj_stream, pj_stream_info);
+//	char remote_buf[256];
+
+//	pj_sockaddr_print(&pj_stream_info->rem_addr, remote_buf, sizeof(remote_buf), 2);
+//	pj_inet_ntop(AF_INET, &pj_stream_info->rem_addr.ipv4.sin_addr, remote_buf, sizeof(remote_buf));
+//	LOG(logINFO) <<"RTP remote IP: "<< pj_inet_ntoa((pj_sockaddr_in*) &pj_stream_info->rem_addr)<<"\n";
+//	//MediaStream const &stream = prm.stream;
+//	//pjmedia_stream const *pj_stream = (pjmedia_stream *)&prm.stream;
+//	pjmedia_stream_info *pj_stream_info;
+//	pjmedia_stream_get_info((pjmedia_stream *) &prm.stream, pj_stream_info);
+//	char remote_buf[256];
+//	pj_sockaddr_print(&pj_stream_info->rem_addr, remote_buf, sizeof(remote_buf), 3);
+//	LOG(logINFO) <<"RTP remote IP: "<< remote_buf <<"\n";
+
+//	LOG(logINFO) <<"RTP remote IP: "<< pj_inet_ntoa(pj_stream_info->rem_addr.ipv4.sin_addr) <<":"<<pj_stream_info->rem_addr.ipv4.sin_port <<"\n";
+//	try {
+//		StreamStat const &stats = getStreamStat(prm.streamIdx);
+//		RtcpStat rtcp = stats.rtcp;
+//		RtcpStreamStat rxStat = rtcp.rxStat;
+//		LOG(logINFO) << "RTCP pkt_recv:" << rxStat.pkt << std::endl;
+//	} catch (pj::Error e)  {
+//			LOG(logERROR) << "error :" << e.status << std::endl;
+//	}
 }
 
 static pj_status_t record_call(TestCall* call, pjsua_call_id call_id, const char *caller_contact) {
@@ -474,7 +532,7 @@ TestAccount* Config::findAccount(std::string account_name) {
 	for (auto & account : accounts) {
 		AccountInfo acc_inf = account->getInfo();
 		int proto_length = 4; // "sip:"
-		if (acc_inf.uri.compare(0, 4, "sips") == 0)
+		if (acc_inf.uri.compare(0, 4, "sip:") == 0)
 			proto_length = 5;
 		LOG(logINFO) << "[searching account]["<< proto_length << "]["<<acc_inf.uri<<"]<>["<<account_name<<"]";
 		if (acc_inf.uri.compare(proto_length, account_name.length(), account_name) == 0) {
@@ -598,7 +656,9 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 				if (acc_cfg.sipConfig.transportId == transport_id_tls) {
 					acc_cfg.idUri = "sips:" + username + "@" + registrar;
 					acc_cfg.regConfig.registrarUri = "sips:" + registrar;
+					LOG(logINFO) << "SIPS URI Scheme";
 				} else {
+					LOG(logINFO) << "SIP URI Scheme";
 					acc_cfg.idUri = "sip:" + username + "@" + registrar;
 					acc_cfg.regConfig.registrarUri = "sip:" + registrar;
 				}
@@ -691,7 +751,9 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					}
 					if (acc_cfg.sipConfig.transportId == transport_id_tls) {
 						acc_cfg.idUri = "sips:" + caller;
+						LOG(logINFO) << "SIPS URI scheme";
 					} else {
+						LOG(logINFO) << "SIP URI scheme";
 						acc_cfg.idUri = "sip:" + caller;
 					}
 
@@ -965,9 +1027,12 @@ int main(int argc, char **argv){
 		tcfg.tlsConfig.CaListFile = "certificate.pem";
 		tcfg.tlsConfig.certFile = "cert.pem";
 		tcfg.tlsConfig.privKeyFile = "key.pem";
+		tcfg.tlsConfig.verifyServer = 0;
+		tcfg.tlsConfig.verifyClient = 0;
 		// Optional, set ciphers. You can select a certain cipher/rearrange the order of ciphers here.
 		// tcfg.ciphers = ep->utilSslGetAvailableCiphers();
 		config.transport_id_tls = ep.transportCreate(PJSIP_TRANSPORT_TLS, tcfg);
+		LOG(logINFO) << "TLS supported ";
 	} catch (Error & err) {
 		config.transport_id_tls = -1;
 		LOG(logINFO) << "Exception: TLS not supported, see README. " << err.info() ;
