@@ -74,7 +74,7 @@ void TestCall::onStreamCreated(OnStreamCreatedParam &prm) {
 	pjmedia_stream const *pj_stream = (pjmedia_stream *)&prm.stream;
 	pjmedia_stream_info *pj_stream_info;
 	pjmedia_stream_get_info(pj_stream, pj_stream_info);
-	LOG(logINFO) <<"rx_pkt:"<< pj_stream_info->rx_pt << " jb_max:" <<pj_stream_info->jb_max << "\n";
+//	LOG(logINFO) <<"rx_pkt:"<< pj_stream_info->rx_pt << " jb_max:" <<pj_stream_info->jb_max << "\n";
 //	pjmedia_stream const *pj_stream = (pjmedia_stream *)prm.stream;
 //	pjmedia_stream_info *pj_stream_info;
 //	pjmedia_stream_get_info(pj_stream, pj_stream_info);
@@ -532,7 +532,7 @@ TestAccount* Config::findAccount(std::string account_name) {
 	for (auto & account : accounts) {
 		AccountInfo acc_inf = account->getInfo();
 		int proto_length = 4; // "sip:"
-		if (acc_inf.uri.compare(0, 4, "sip:") == 0)
+		if (acc_inf.uri.compare(0, 4, "sips") == 0)
 			proto_length = 5;
 		LOG(logINFO) << "[searching account]["<< proto_length << "]["<<acc_inf.uri<<"]<>["<<account_name<<"]";
 		if (acc_inf.uri.compare(proto_length, account_name.length(), account_name) == 0) {
@@ -656,6 +656,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 				if (acc_cfg.sipConfig.transportId == transport_id_tls) {
 					acc_cfg.idUri = "sips:" + username + "@" + registrar;
 					acc_cfg.regConfig.registrarUri = "sips:" + registrar;
+					//acc_cfg.sipConfig.contactParams = ";trans=tls;";
 					LOG(logINFO) << "SIPS URI Scheme";
 				} else {
 					LOG(logINFO) << "SIP URI Scheme";
@@ -699,6 +700,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					}
 					if (acc_cfg.sipConfig.transportId == transport_id_tls) {
 						acc_cfg.idUri = "sips:" + account_name;
+						//acc_cfg.sipConfig.contactParams = ";trans=tls;";
 					} else {
 						acc_cfg.idUri = "sip:" + account_name;
 					}
@@ -730,6 +732,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 				LOG(logINFO) <<" >> "<<tag<<"action parameters found : " << action_type ;
 				// make call begin
 				TestAccount *acc = findAccount(caller);
+				std::string transport("");
 				if (!acc) {
 					LOG(logINFO) << "caller not found[" << caller << "] creating new account.";
 					acc = new TestAccount();
@@ -737,7 +740,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 
 					acc_cfg.sipConfig.transportId = transport_id_udp;
 					if (ezxml_attr(xml_action,"transport")) {
-						std::string transport = ezxml_attr(xml_action,"transport");
+						transport = ezxml_attr(xml_action,"transport");
 						if (transport.compare("tcp") == 0) {
 							acc_cfg.sipConfig.transportId = transport_id_tcp;
 						}
@@ -751,6 +754,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					}
 					if (acc_cfg.sipConfig.transportId == transport_id_tls) {
 						acc_cfg.idUri = "sips:" + caller;
+						// acc_cfg.sipConfig.contactParams = ";transport=tls;";
 						LOG(logINFO) << "SIPS URI scheme";
 					} else {
 						LOG(logINFO) << "SIP URI scheme";
@@ -823,7 +827,11 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					prm.opt.videoCount = 0;
 					LOG(logINFO) << "call->test:" << test << " " << call->test->type;
 					LOG(logINFO) << "calling :" +callee;
-					call->makeCall("sip:"+callee, prm);
+					if (transport.compare("tls") == 0) {
+						call->makeCall("sips:"+callee, prm);
+					} else {
+						call->makeCall("sip:"+callee, prm);
+					}
 					repeat--;
 				} while (repeat >= 0);
 
