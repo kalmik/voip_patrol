@@ -8,12 +8,29 @@
 
 #include "voip_patrol.hh"
 #include <iostream>
+#include <vector>
 
 class Config;
+
+using namespace std;
+
+enum class APType { integer, string };
+
+struct ActionParam {
+	ActionParam(string name, bool required, APType type, string s_val="", int i_val=0)
+                 : type(type), required(required), name(name), i_val(i_val), s_val(s_val) {}
+	APType type {APType::integer};
+	string name;
+	int i_val;
+	string s_val;
+	bool required;
+};
 
 class Action {
 	public:
 			Action(Config *cfg);
+			const vector<ActionParam>* get_params(string);
+			bool set_param(ActionParam, const char *);
 			void do_call() {};
 			void do_accept() {};
 			void do_wait(bool done, int duration=0);
@@ -21,6 +38,10 @@ class Action {
 			void set_config(Config *);
 			Config* get_config();
 	private:
+			string get_env(string);
+			void init_actions_params();
+			vector<ActionParam> do_call_params;
+			
 			Config* config;
 };
 

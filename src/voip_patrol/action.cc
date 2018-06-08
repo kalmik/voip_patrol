@@ -7,7 +7,50 @@
 #include "voip_patrol.hh"
 
 Action::Action(Config *cfg) : config{cfg} {
+	init_actions_params();
 	std::cout<<"Prepared for Action!\n";
+}
+
+const vector<ActionParam>* Action::get_params(string name) {
+	if (name.compare("call") == 0) return &do_call_params;
+	return nullptr;
+}
+
+string Action::get_env(string env) {
+	if (const char* val = std::getenv(env.c_str())) {
+		std::string s(val);
+		return s;
+	} else {
+		return "";
+	}
+}
+
+bool Action::set_param(ActionParam param, const char *val) {
+			if (!val) return false;
+			if (param.type == APType::integer) {
+				param.i_val = atoi(val);
+			} else {
+				param.s_val = val;
+				if (param.s_val.compare(0, 7, "VP_ENV_") == 0)
+						param.s_val = get_env(val);
+			}
+			cout << "param" << param.name << " set: " << param.s_val << endl;
+			return true;
+}
+
+void Action::init_actions_params() {
+	// do_call
+	do_call_params.push_back(ActionParam("caller", true, APType::string));
+	do_call_params.push_back(ActionParam("callee", true, APType::string));
+	do_call_params.push_back(ActionParam("label", false, APType::string));
+	do_call_params.push_back(ActionParam("username", false, APType::string));
+	do_call_params.push_back(ActionParam("password", false, APType::string));
+	do_call_params.push_back(ActionParam("realm", false, APType::string));
+	do_call_params.push_back(ActionParam("transport", false, APType::string));
+	do_call_params.push_back(ActionParam("expected_cause_code", false, APType::integer));
+	do_call_params.push_back(ActionParam("wait_until", false, APType::integer));
+	do_call_params.push_back(ActionParam("max_duration", false, APType::integer));
+	do_call_params.push_back(ActionParam("hangup", false, APType::integer));
 }
 
 void Action::do_wait(bool complete_all, int duration_ms) {

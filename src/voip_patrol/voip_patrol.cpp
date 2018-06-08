@@ -523,6 +523,17 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 			if (p_password) password = p_password;
 			if (password.compare(0, 7, "VP_ENV_") == 0) password = get_env(password);
 
+			// if ( action_type.compare("call") == 0 ) {
+			const vector<ActionParam>* params = action.get_params(action_type);
+			if (!params) {
+				std::cerr << "params not found for action:" << action_type << std::endl;
+			} else {
+				for (auto &param : *params) {
+					cout << param.name << std::endl;
+					action.set_param(param, ezxml_attr(xml_action, param.name.c_str()));
+				}
+			}
+
 			/* action */
 			int duration_ms = 0;
 			if (ezxml_attr(xml_action,"ms")) duration_ms = atoi(ezxml_attr(xml_action,"ms"));
