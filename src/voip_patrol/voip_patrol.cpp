@@ -524,24 +524,20 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 			if (password.compare(0, 7, "VP_ENV_") == 0) password = get_env(password);
 
 			// if ( action_type.compare("call") == 0 ) {
-			const vector<ActionParam>* params = action.get_params(action_type);
+			vector<ActionParam>* params = action.get_params(action_type);
 			if (!params) {
 				std::cerr << "params not found for action:" << action_type << std::endl;
 			} else {
+				std::cerr << "params found for action:" << action_type << std::endl;
 				for (auto &param : *params) {
-					cout << param.name << std::endl;
+					cout << "searching:" <<param.name << std::endl;
 					action.set_param(param, ezxml_attr(xml_action, param.name.c_str()));
 				}
+				if ( action_type.compare("wait") == 0 ) action.do_wait(*params);
 			}
 
 			/* action */
-			int duration_ms = 0;
-			if (ezxml_attr(xml_action,"ms")) duration_ms = atoi(ezxml_attr(xml_action,"ms"));
-			if ( action_type.compare("wait") == 0 ) {
-				action.do_wait(false, duration_ms);
-			} else if ( action_type.compare("wait-complete") == 0 || action_type.compare("sleep") == 0 ) {
-				action.do_wait(true, duration_ms);
-			} else if ( action_type.compare("alert") == 0 ) {
+			if ( action_type.compare("alert") == 0 ) {
 				if (!ezxml_attr(xml_action,"email")) {
 					std::cerr <<" >> "<<tag<<"missing pamameter !\n";
 					continue;
@@ -999,7 +995,8 @@ int main(int argc, char **argv){
 		config.process(conf_fn, log_test_fn);
 
 		LOG(logINFO) << "wait complete all...";
-		config.action.do_wait(true);
+		vector<ActionParam> params {ActionParam("complete", false, APType::integer, "", 1)};
+		config.action.do_wait(params);
 
 		LOG(logINFO) << "checking alerts...";
 

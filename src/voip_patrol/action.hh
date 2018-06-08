@@ -29,11 +29,11 @@ struct ActionParam {
 class Action {
 	public:
 			Action(Config *cfg);
-			const vector<ActionParam>* get_params(string);
-			bool set_param(ActionParam, const char *);
+			vector<ActionParam>* get_params(string);
+			bool set_param(ActionParam&, const char *);
 			void do_call() {};
 			void do_accept() {};
-			void do_wait(bool done, int duration=0);
+			void do_wait(vector<ActionParam> &params);
 			void do_register() {};
 			void set_config(Config *);
 			Config* get_config();
@@ -41,6 +41,7 @@ class Action {
 			string get_env(string);
 			void init_actions_params();
 			vector<ActionParam> do_call_params;
+			vector<ActionParam> do_wait_params;
 			
 			Config* config;
 };

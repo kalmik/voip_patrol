@@ -11,8 +11,9 @@ Action::Action(Config *cfg) : config{cfg} {
 	std::cout<<"Prepared for Action!\n";
 }
 
-const vector<ActionParam>* Action::get_params(string name) {
+vector<ActionParam>* Action::get_params(string name) {
 	if (name.compare("call") == 0) return &do_call_params;
+	if (name.compare("wait") == 0) return &do_wait_params;
 	return nullptr;
 }
 
@@ -25,7 +26,7 @@ string Action::get_env(string env) {
 	}
 }
 
-bool Action::set_param(ActionParam param, const char *val) {
+bool Action::set_param(ActionParam &param, const char *val) {
 			if (!val) return false;
 			if (param.type == APType::integer) {
 				param.i_val = atoi(val);
@@ -34,7 +35,6 @@ bool Action::set_param(ActionParam param, const char *val) {
 				if (param.s_val.compare(0, 7, "VP_ENV_") == 0)
 						param.s_val = get_env(val);
 			}
-			cout << "param" << param.name << " set: " << param.s_val << endl;
 			return true;
 }
 
@@ -51,11 +51,19 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("wait_until", false, APType::integer));
 	do_call_params.push_back(ActionParam("max_duration", false, APType::integer));
 	do_call_params.push_back(ActionParam("hangup", false, APType::integer));
+	// do_wait
+	do_wait_params.push_back(ActionParam("ms", false, APType::integer));
+	do_wait_params.push_back(ActionParam("complete", false, APType::integer));
 }
 
-void Action::do_wait(bool complete_all, int duration_ms) {
-	// config->wait(done);
-	LOG(logINFO) << __FUNCTION__ << " duration_ms:" << duration_ms ;
+void Action::do_wait(vector<ActionParam> &params) {
+	int duration_ms = 0;
+	int complete_all = 0;
+	for (auto param : params) {
+		if (param.name.compare("ms") == 0) duration_ms = param.i_val;
+		if (param.name.compare("complete") == 0) complete_all = param.i_val;
+	}
+	LOG(logINFO) << __FUNCTION__ << " duration_ms:" << duration_ms << " complete all tests:" << complete_all;
 	bool completed = false;
 	int tests_running = 0;
 	bool status_update = true;
@@ -123,6 +131,9 @@ void Action::do_wait(bool complete_all, int duration_ms) {
 		} else {
 			if (duration_ms > 0) {
 				duration_ms -= 10;
+				pj_thread_sleep(10);
+				continue;
+			} else if (duration_ms == -1) {
 				pj_thread_sleep(10);
 				continue;
 			}
