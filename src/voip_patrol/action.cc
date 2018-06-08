@@ -5,6 +5,7 @@
 
 
 #include "voip_patrol.hh"
+#include "action.hh"
 
 Action::Action(Config *cfg) : config{cfg} {
 	init_actions_params();
@@ -28,7 +29,7 @@ string Action::get_env(string env) {
 
 bool Action::set_param(ActionParam &param, const char *val) {
 			if (!val) return false;
-			if (param.type == APType::integer) {
+			if (param.type == APType::apt_integer) {
 				param.i_val = atoi(val);
 			} else {
 				param.s_val = val;
@@ -40,20 +41,142 @@ bool Action::set_param(ActionParam &param, const char *val) {
 
 void Action::init_actions_params() {
 	// do_call
-	do_call_params.push_back(ActionParam("caller", true, APType::string));
-	do_call_params.push_back(ActionParam("callee", true, APType::string));
-	do_call_params.push_back(ActionParam("label", false, APType::string));
-	do_call_params.push_back(ActionParam("username", false, APType::string));
-	do_call_params.push_back(ActionParam("password", false, APType::string));
-	do_call_params.push_back(ActionParam("realm", false, APType::string));
-	do_call_params.push_back(ActionParam("transport", false, APType::string));
-	do_call_params.push_back(ActionParam("expected_cause_code", false, APType::integer));
-	do_call_params.push_back(ActionParam("wait_until", false, APType::integer));
-	do_call_params.push_back(ActionParam("max_duration", false, APType::integer));
-	do_call_params.push_back(ActionParam("hangup", false, APType::integer));
+	do_call_params.push_back(ActionParam("caller", true, APType::apt_string));
+	do_call_params.push_back(ActionParam("callee", true, APType::apt_string));
+	do_call_params.push_back(ActionParam("label", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("username", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("password", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("realm", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("transport", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("expected_cause_code", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("wait_until", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("hangup", false, APType::apt_integer));
 	// do_wait
-	do_wait_params.push_back(ActionParam("ms", false, APType::integer));
-	do_wait_params.push_back(ActionParam("complete", false, APType::integer));
+	do_wait_params.push_back(ActionParam("ms", false, APType::apt_integer));
+	do_wait_params.push_back(ActionParam("complete", false, APType::apt_integer));
+}
+
+void Action::do_call(vector<ActionParam> &params) {
+	string caller {};
+	string callee {};
+	string transport {};
+	string username {};
+	string password {};
+	string realm {};
+	string label {};
+	int expected_cause_code {200};
+	int wait_until {0};
+	float min_mos {0.0};
+	int max_duration {0};
+	int max_calling_duration {0};
+	int expected_duration {0};
+	int hangup_duration {0};
+	int repeat {0};
+
+	//	if ( ezxml_attr(xml_action,"recording") ) {
+	//			test->recording = true;
+
+	for (auto param : params) {
+		if (param.name.compare("callee") == 0) callee = param.s_val;
+		else if (param.name.compare("caller") == 0) caller = param.s_val;
+		else if (param.name.compare("transport") == 0) transport = param.s_val;
+		else if (param.name.compare("username") == 0) username = param.s_val;
+		else if (param.name.compare("password") == 0) password = param.s_val;
+		else if (param.name.compare("realm") == 0) realm = param.s_val;
+		else if (param.name.compare("label") == 0) label = param.s_val;
+		else if (param.name.compare("expected_cause_code") == 0) expected_cause_code = param.i_val;
+		else if (param.name.compare("wait_until") == 0) wait_until = param.i_val;
+		else if (param.name.compare("min_mos") == 0) min_mos = param.f_val;
+		else if (param.name.compare("max_duration") == 0) max_duration = param.i_val;
+		else if (param.name.compare("max_calling_duration") == 0) max_calling_duration = param.i_val;
+		else if (param.name.compare("duration") == 0) expected_duration = param.i_val;
+		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
+		else if (param.name.compare("repeat") == 0) repeat = param.i_val;
+
+	}
+	if (caller.empty() || callee.empty()) {
+		LOG(logERROR) <<__FUNCTION__<<" missing action parameters for callee/caller" ;
+		return;
+	}
+
+	TestAccount* acc = config->findAccount(caller);
+	if (!acc) {
+		LOG(logINFO) << "caller not found[" << caller << "] creating new account.";
+		acc = new TestAccount();
+		AccountConfig acc_cfg;
+
+		acc_cfg.sipConfig.transportId = config->transport_id_udp;
+		if (!transport.empty()) {
+			if (transport.compare("tcp") == 0) {
+				acc_cfg.sipConfig.transportId = config->transport_id_tcp;
+			} else if (transport.compare("tls") == 0) {
+				if (config->transport_id_tls == -1) {
+					LOG(logERROR) <<__FUNCTION__<<"TLS transport not supported" ;
+					return;
+				}
+				acc_cfg.sipConfig.transportId = config->transport_id_tls;
+			}
+		}
+		if (acc_cfg.sipConfig.transportId == config->transport_id_tls) {
+			acc_cfg.idUri = "sips:" + caller;
+		} else {
+			acc_cfg.idUri = "sip:" + caller;
+		}
+		if (!realm.empty()) {
+			if (username.empty() || password.empty()) {
+				if (username.empty()) LOG(logERROR) << "[config] realm specified missing username";
+				else LOG(logERROR) << "[config] realm specified missing password";
+				return;
+			}
+			acc_cfg.sipConfig.authCreds.push_back( AuthCredInfo("digest", realm, username, 0, password) );
+		}
+		acc->config = config;
+		acc->create(acc_cfg);
+	}
+
+	do {
+		Test *test = new Test(config);
+		test->wait_state = (call_wait_state_t)wait_until;
+		test->min_mos = min_mos;
+		test->expected_duration = expected_duration;
+		test->label = label;
+		test->max_duration = max_duration;
+		test->max_calling_duration = max_calling_duration;
+		test->hangup_duration = hangup_duration;
+
+		std::size_t pos = caller.find("@");
+		if (pos!=std::string::npos) {
+			test->local_user = caller.substr(0, pos);
+		}
+		pos = callee.find("@");
+		if (pos!=std::string::npos) {
+			test->remote_user = callee.substr(0, pos);
+		}
+
+		TestCall *call = new TestCall(acc);
+		config->calls.push_back(call);
+
+		call->test = test;
+		test->expected_cause_code = expected_cause_code;
+		test->from = caller;
+		test->to = callee;
+		test->type = "call";
+		acc->calls.push_back(call);
+		CallOpParam prm(true);
+		prm.opt.audioCount = 1;
+		prm.opt.videoCount = 0;
+		LOG(logINFO) << "call->test:" << test << " " << call->test->type;
+		LOG(logINFO) << "calling :" +callee;
+		if (transport.compare("tls") == 0) {
+			call->makeCall("sips:"+callee, prm);
+		} else if (transport.compare("tcp") == 0) {
+			call->makeCall("sip:"+callee+";transport=tcp", prm);
+		} else {
+			call->makeCall("sip:"+callee, prm);
+		}
+		repeat--;
+	} while (repeat >= 0);
 }
 
 void Action::do_wait(vector<ActionParam> &params) {
