@@ -507,20 +507,21 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 			string action_type = ezxml_attr(xml_action,"type");
 			LOG(logINFO) <<" >> "<<tag<<"type:"<< action_type ;
 
-			std::string username = "";
-			if (ezxml_attr(xml_action,"username")) {
-				username = ezxml_attr(xml_action,"username");
-				if (username.compare(0, 7, "VP_ENV_") == 0) {
-					username = get_env(username);
-				}
-			}
-			std::string password = "";
-			if (ezxml_attr(xml_action,"password")) {
-				password = ezxml_attr(xml_action,"password");
-				if (password.compare(0, 7, "VP_ENV_") == 0) {
-					password = get_env(password);
-				}
-			}
+			// more refactoring needed
+			std::string caller {};
+			const char *p_caller = ezxml_attr(xml_action,"caller");
+			if (p_caller) caller = p_caller;
+			if (caller.compare(0, 7, "VP_ENV_") == 0) caller = get_env(caller);
+
+			std::string username {};
+			const char *p_username = ezxml_attr(xml_action,"username");
+			if (p_username) username = p_username;
+			if (username.compare(0, 7, "VP_ENV_") == 0) username = get_env(username);
+
+			std::string password {};
+			const char *p_password = ezxml_attr(xml_action,"password");
+			if (p_password) password = p_password;
+			if (password.compare(0, 7, "VP_ENV_") == 0) password = get_env(password);
 
 			/* action */
 			int duration_ms = 0;
@@ -771,9 +772,12 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 		}
 	}
 }
-/* declaration Config */
 
-/* declaration Alert */
+
+/*
+ * Alert implementation
+ */
+
 Alert::Alert(Config * p_config){
 	curl = curl_easy_init();
 	config = p_config;
@@ -842,9 +846,7 @@ size_t Alert::payload_source(void *ptr, size_t size, size_t nmemb, void *userp) 
 
 	if(upload_data->lines_read >= upload_data->payload_content.size())
 		return 0;
-//	data = payload_text[upload_data->lines_read];
 	data = upload_data->payload_content[upload_data->lines_read].c_str();
-//	LOG(logINFO)<<LOG_COLOR_INFO<<data<<LOG_COLOR_END;
 	if(data) {
 		size_t len = strlen(data);
 		memcpy(ptr, data, len);
@@ -854,7 +856,7 @@ size_t Alert::payload_source(void *ptr, size_t size, size_t nmemb, void *userp) 
 
 	return 0;
 }
-/* declaration Alert */
+
 
 int main(int argc, char **argv){
 	int ret = 0;
