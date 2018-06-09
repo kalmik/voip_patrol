@@ -33,7 +33,7 @@ class Action {
 			vector<ActionParam>* get_params(string);
 			bool set_param(ActionParam&, const char *);
 			void do_call(vector<ActionParam> &params);
-			void do_accept() {};
+			void do_accept(vector<ActionParam> &params);
 			void do_wait(vector<ActionParam> &params);
 			void do_register() {};
 			void set_config(Config *);
@@ -43,6 +43,7 @@ class Action {
 			void init_actions_params();
 			vector<ActionParam> do_call_params;
 			vector<ActionParam> do_wait_params;
+			vector<ActionParam> do_accept_params;
 			
 			Config* config;
 };

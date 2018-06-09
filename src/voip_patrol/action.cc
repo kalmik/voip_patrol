@@ -15,6 +15,7 @@ Action::Action(Config *cfg) : config{cfg} {
 vector<ActionParam>* Action::get_params(string name) {
 	if (name.compare("call") == 0) return &do_call_params;
 	if (name.compare("wait") == 0) return &do_wait_params;
+	if (name.compare("accept") == 0) return &do_accept_params;
 	return nullptr;
 }
 
@@ -52,9 +53,65 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("wait_until", false, APType::apt_integer));
 	do_call_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
 	do_call_params.push_back(ActionParam("hangup", false, APType::apt_integer));
+	// do_accept
+	do_accept_params.push_back(ActionParam("account", false, APType::apt_string));
+	do_accept_params.push_back(ActionParam("transport", false, APType::apt_string));
+	do_accept_params.push_back(ActionParam("label", false, APType::apt_string));
+	do_accept_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
+	do_accept_params.push_back(ActionParam("hangup", false, APType::apt_integer));
 	// do_wait
 	do_wait_params.push_back(ActionParam("ms", false, APType::apt_integer));
 	do_wait_params.push_back(ActionParam("complete", false, APType::apt_integer));
+}
+
+void Action::do_accept(vector<ActionParam> &params) {
+	string account_name {};
+	string transport {};
+	string label {};
+	int max_duration {0};
+	int hangup_duration {0};
+
+	for (auto param : params) {
+		if (param.name.compare("account") == 0) account_name = param.s_val;
+		else if (param.name.compare("transport") == 0) transport = param.s_val;
+		else if (param.name.compare("label") == 0) label = param.s_val;
+		else if (param.name.compare("max_duration") == 0) max_duration = param.i_val;
+		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
+	}
+
+	if (account_name.empty()) {
+		LOG(logERROR) <<__FUNCTION__<<" missing action parameters <account>" ;
+		return;
+	}
+
+	TestAccount *acc = config->findAccount(account_name);
+	if (!acc) {
+		LOG(logINFO) <<__FUNCTION__<< "account not found: " << account_name << " creating";
+		acc = new TestAccount();
+		AccountConfig acc_cfg;
+		acc_cfg.sipConfig.transportId = config->transport_id_udp;
+		if (!transport.empty()) {
+			if (transport.compare("tcp") == 0) {
+				acc_cfg.sipConfig.transportId = config->transport_id_tcp;
+			} else if (transport.compare("tls") == 0) {
+				if (config->transport_id_tls == -1) {
+					LOG(logERROR) <<__FUNCTION__<<"TLS transport not supported.";
+					return;
+				}
+				acc_cfg.sipConfig.transportId = config->transport_id_tls;
+			}
+		}
+		if (acc_cfg.sipConfig.transportId == config->transport_id_tls) {
+			acc_cfg.idUri = "sips:" + account_name;
+		} else {
+			acc_cfg.idUri = "sip:" + account_name;
+		}
+		acc->config = config;
+		acc->create(acc_cfg);
+	}
+	acc->hangup_duration = hangup_duration;
+	acc->max_duration = max_duration;
+	acc->accept_label = label;
 }
 
 void Action::do_call(vector<ActionParam> &params) {
@@ -73,9 +130,7 @@ void Action::do_call(vector<ActionParam> &params) {
 	int expected_duration {0};
 	int hangup_duration {0};
 	int repeat {0};
-
-	//	if ( ezxml_attr(xml_action,"recording") ) {
-	//			test->recording = true;
+	bool recording {false};
 
 	for (auto param : params) {
 		if (param.name.compare("callee") == 0) callee = param.s_val;
@@ -93,8 +148,9 @@ void Action::do_call(vector<ActionParam> &params) {
 		else if (param.name.compare("duration") == 0) expected_duration = param.i_val;
 		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
 		else if (param.name.compare("repeat") == 0) repeat = param.i_val;
-
+		else if (param.name.compare("recording") == 0) recording = true;
 	}
+
 	if (caller.empty() || callee.empty()) {
 		LOG(logERROR) <<__FUNCTION__<<" missing action parameters for callee/caller" ;
 		return;
@@ -144,6 +200,7 @@ void Action::do_call(vector<ActionParam> &params) {
 		test->max_duration = max_duration;
 		test->max_calling_duration = max_calling_duration;
 		test->hangup_duration = hangup_duration;
+		test->recording = recording;
 
 		std::size_t pos = caller.find("@");
 		if (pos!=std::string::npos) {

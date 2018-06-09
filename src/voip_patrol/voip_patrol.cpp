@@ -539,6 +539,7 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 				}
 				if ( action_type.compare("wait") == 0 ) action.do_wait(*params);
 				if ( action_type.compare("call") == 0 ) action.do_call(*params);
+				if ( action_type.compare("accept") == 0 ) action.do_accept(*params);
 			}
 
 			/* action */
@@ -619,56 +620,6 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					acc->modify(acc_cfg);
 				}
 				acc->setTest(test);
-
-			} else if ( action_type.compare("accept") == 0 ) {
-				if (account_name.empty()) {
-					std::cerr <<" >> "<<tag<<"missing action parameters 'account' for: " << action_type ;
-					continue;
-				}
-				TestAccount *acc = findAccount(account_name);
-				if (!acc) {
-					LOG(logINFO) << "account not found: " << account_name << " creating";
-					acc = new TestAccount();
-					AccountConfig acc_cfg;
-					acc_cfg.sipConfig.transportId = transport_id_udp;
-					if (ezxml_attr(xml_action,"transport")) {
-						std::string transport = ezxml_attr(xml_action,"transport");
-						if (transport.compare("tcp") == 0) {
-							acc_cfg.sipConfig.transportId = transport_id_tcp;
-						}
-						if (transport.compare("tls") == 0) {
-							if (transport_id_tls == -1) {
-								std::cerr <<" >> "<<tag<<"TLS transport not supported " << action_type ;
-								continue;
-							}
-							acc_cfg.sipConfig.transportId = transport_id_tls;
-						}
-					}
-					if (acc_cfg.sipConfig.transportId == transport_id_tls) {
-						acc_cfg.idUri = "sips:" + account_name;
-						//acc_cfg.sipConfig.contactParams = ";trans=tls;";
-					} else {
-						acc_cfg.idUri = "sip:" + account_name;
-					}
-					acc->config = this;
-					acc->create(acc_cfg);
-				}
-				if (ezxml_attr(xml_action,"hangup")){
-					acc->hangup_duration = atoi(ezxml_attr(xml_action,"hangup"));
-				} else {
-					acc->hangup_duration = 0;
-				}
-				if (ezxml_attr(xml_action,"max_duration")){
-					acc->max_duration = atoi(ezxml_attr(xml_action,"max_duration"));
-				} else {
-					acc->max_duration = 0;
-				}
-				if (ezxml_attr(xml_action,"label")){
-					acc->accept_label = ezxml_attr(xml_action,"label");
-				}
-			} else if ( action_type.compare("call") == 0 ) {
-
-
 			} else {
 				std::cerr <<" >> "<<tag<<"unknown action !\n";
 			}
