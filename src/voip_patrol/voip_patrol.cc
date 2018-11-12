@@ -301,6 +301,7 @@ TestAccount::TestAccount() {
 	max_duration=0;
 	ring_duration=0;
 	accept_label="-";
+	expected_cause_code=200;
 }
 
 TestAccount::~TestAccount() {
@@ -337,7 +338,7 @@ void TestAccount::onIncomingCall(OnIncomingCallParam &iprm) {
 		call->test->hangup_duration = hangup_duration;
 		call->test->max_duration = max_duration;
 		call->test->ring_duration = ring_duration;
-		call->test->expected_cause_code = 200;
+		call->test->expected_cause_code = expected_cause_code;
 		call->test->local_user = ci.localUri;
 		call->test->remote_user = ci.remoteUri;
 		call->test->label = accept_label;

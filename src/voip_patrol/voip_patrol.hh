@@ -213,6 +213,7 @@ class TestAccount : public Account {
 		std::string accept_label;
 		string reason;
 		int code;
+		int expected_cause_code;
 };
 
 class TestCall : public Call {

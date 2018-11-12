@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA~
  */
 
+#include <unistd.h>
 #include "voip_patrol.hh"
 #include "action.hh"
 
@@ -85,6 +86,8 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("hangup", false, APType::apt_integer));
 	do_call_params.push_back(ActionParam("play", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("play_dtmf", false, APType::apt_string));
+	do_call_params.push_back(ActionParam("repeat", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("repeat_interval", false, APType::apt_integer));
 	// do_register
 	do_register_params.push_back(ActionParam("transport", false, APType::apt_string));
 	do_register_params.push_back(ActionParam("label", false, APType::apt_string));
@@ -107,6 +110,7 @@ void Action::init_actions_params() {
 	do_accept_params.push_back(ActionParam("rtp_stats", false, APType::apt_bool));
 	do_accept_params.push_back(ActionParam("play", false, APType::apt_string));
 	do_accept_params.push_back(ActionParam("code", false, APType::apt_integer));
+	do_accept_params.push_back(ActionParam("expected_cause_code", false, APType::apt_integer));
 	do_accept_params.push_back(ActionParam("reason", false, APType::apt_string));
 	do_accept_params.push_back(ActionParam("play_dtmf", false, APType::apt_string));
 	// do_wait
@@ -215,6 +219,7 @@ void Action::do_accept(vector<ActionParam> &params) {
 	call_state_t wait_until {INV_STATE_NULL};
 	bool rtp_stats {false};
 	int code {200};
+	int expected_cause_code {200};
 	string reason {};
 
 	for (auto param : params) {
@@ -223,6 +228,7 @@ void Action::do_accept(vector<ActionParam> &params) {
 		else if (param.name.compare("play") == 0 && param.s_val.length() > 0) play = param.s_val;
 		else if (param.name.compare("play_dtmf") == 0 && param.s_val.length() > 0) play_dtmf = param.s_val;
 		else if (param.name.compare("code") == 0) code = param.i_val;
+		else if (param.name.compare("expected_cause_code") == 0) expected_cause_code = param.i_val;
 		else if (param.name.compare("reason") == 0 && param.s_val.length() > 0) reason = param.s_val;
 		else if (param.name.compare("label") == 0) label = param.s_val;
 		else if (param.name.compare("max_duration") == 0) max_duration = param.i_val;
@@ -270,6 +276,7 @@ void Action::do_accept(vector<ActionParam> &params) {
 	acc->wait_state = wait_until;
 	acc->reason = reason;
 	acc->code = code;
+	acc->expected_cause_code = expected_cause_code;
 }
 
 void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
@@ -291,6 +298,7 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 	int expected_duration {0};
 	int hangup_duration {0};
 	int repeat {0};
+	int repeat_interval {1000};
 	bool recording {false};
 	bool rtp_stats {false};
 
@@ -313,6 +321,7 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 		else if (param.name.compare("duration") == 0) expected_duration = param.i_val;
 		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
 		else if (param.name.compare("repeat") == 0) repeat = param.i_val;
+		else if (param.name.compare("repeat_interval") == 0) repeat_interval = param.i_val;
 		else if (param.name.compare("recording") == 0) recording = true;
 	}
 
