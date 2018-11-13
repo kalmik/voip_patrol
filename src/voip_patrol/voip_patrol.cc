@@ -671,6 +671,9 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 					SipHeader sh = SipHeader();
 					sh.hName = ezxml_attr(xml_xhdr, "name");
 					sh.hValue = ezxml_attr(xml_xhdr, "value");
+					if (sh.hValue.compare(0, 7, "VP_ENV_") == 0) {
+						sh.hValue = action.get_env(sh.hValue);
+					}
 					x_hdrs.push_back(sh);
 				}
 				action.do_call(params, x_hdrs);

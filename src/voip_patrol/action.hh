@@ -55,8 +55,8 @@ class Action {
 			void do_alert(vector<ActionParam> &params);
 			void set_config(Config *);
 			Config* get_config();
-	private:
 			string get_env(string);
+	private:
 			void init_actions_params();
 			vector<ActionParam> do_call_params;
 			vector<ActionParam> do_register_params;
