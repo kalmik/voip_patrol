@@ -87,7 +87,7 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("play", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("play_dtmf", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("repeat", false, APType::apt_integer));
-	do_call_params.push_back(ActionParam("repeat_interval", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("sps", false, APType::apt_float));
 	// do_register
 	do_register_params.push_back(ActionParam("transport", false, APType::apt_string));
 	do_register_params.push_back(ActionParam("label", false, APType::apt_string));
@@ -298,7 +298,8 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 	int expected_duration {0};
 	int hangup_duration {0};
 	int repeat {0};
-	int repeat_interval {1000};
+	float sps {1.0};
+	int interval {1000};
 	bool recording {false};
 	bool rtp_stats {false};
 
@@ -321,8 +322,12 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 		else if (param.name.compare("duration") == 0) expected_duration = param.i_val;
 		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
 		else if (param.name.compare("repeat") == 0) repeat = param.i_val;
-		else if (param.name.compare("repeat_interval") == 0) repeat_interval = param.i_val;
+		else if (param.name.compare("sps") == 0) sps = param.f_val;
 		else if (param.name.compare("recording") == 0) recording = true;
+	}
+
+	if (repeat) {
+		interval = 1000/sps;
 	}
 
 	if (caller.empty() || callee.empty()) {
@@ -424,6 +429,7 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 			}
 		}
 		repeat--;
+		pj_thread_sleep(interval);
 	} while (repeat >= 0);
 }
 
