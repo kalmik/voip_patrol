@@ -63,6 +63,7 @@ class Action {
 			vector<ActionParam> do_wait_params;
 			vector<ActionParam> do_accept_params;
 			vector<ActionParam> do_alert_params;
+			vector<string> parse_args(istringstream is);
 			Config* config;
 };
 

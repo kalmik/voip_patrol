@@ -83,7 +83,7 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
 	do_call_params.push_back(ActionParam("min_mos", false, APType::apt_float));
 	do_call_params.push_back(ActionParam("rtp_stats", false, APType::apt_bool));
-	do_call_params.push_back(ActionParam("hangup", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("hangup", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("play", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("play_dtmf", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("repeat", false, APType::apt_integer));
@@ -279,6 +279,16 @@ void Action::do_accept(vector<ActionParam> &params) {
 	acc->expected_cause_code = expected_cause_code;
 }
 
+vector<string> Action::parse_args(istringstream is) {
+	vector<string> args;
+	string token;
+	while (getline(is, token, ',')) {
+	    if (!token.empty())
+		    args.push_back(token);
+	}
+	return args;
+}
+
 void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 	string type {"call"};
 	string play {default_playback_file};
@@ -296,6 +306,8 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 	int max_duration {0};
 	int max_calling_duration {0};
 	int expected_duration {0};
+	istringstream hangup_duration_s;
+	vector<string> hangup_duration_args;
 	int hangup_duration {0};
 	int repeat {0};
 	float sps {1.0};
@@ -320,10 +332,15 @@ void Action::do_call(vector<ActionParam> &params, SipHeaderVector &x_headers) {
 		else if (param.name.compare("max_duration") == 0) max_duration = param.i_val;
 		else if (param.name.compare("max_calling_duration") == 0) max_calling_duration = param.i_val;
 		else if (param.name.compare("duration") == 0) expected_duration = param.i_val;
-		else if (param.name.compare("hangup") == 0) hangup_duration = param.i_val;
+		else if (param.name.compare("hangup") == 0) hangup_duration_s.str(param.s_val);
 		else if (param.name.compare("repeat") == 0) repeat = param.i_val;
 		else if (param.name.compare("sps") == 0) sps = param.f_val;
 		else if (param.name.compare("recording") == 0) recording = true;
+	}
+
+	hangup_duration_args = parse_args(hangup_duration_s);
+	if (!hangup_duration_args.empty()) {
+		LOG(logINFO) << __FUNCTION__ << hangup_duration_args[0];
 	}
 
 	if (repeat) {
