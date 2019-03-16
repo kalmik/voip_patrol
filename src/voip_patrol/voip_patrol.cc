@@ -648,39 +648,57 @@ bool Config::process(std::string p_configFileName, std::string p_jsonResultFileN
 
 	for (xml_actions = ezxml_child(xml_conf, "actions"); xml_actions; xml_actions=xml_actions->next) {
 		LOG(logINFO) <<__FUNCTION__<< " ===> " << xml_actions->name;
-		for (xml_action = ezxml_child(xml_actions, "action"); xml_action; xml_action=xml_action->next) {
-			const char * val = ezxml_attr(xml_action,"type");
-			if (!val) {
-				LOG(logERROR) <<__FUNCTION__<<" invalid action !";
-				continue;
-			}
-			string action_type = ezxml_attr(xml_action,"type");;
-			LOG(logINFO) <<__FUNCTION__<< " ===> action/" << action_type;
-			vector<ActionParam> params = action.get_params(action_type);
-			if (params.size() == 0) {
-				LOG(logERROR) <<__FUNCTION__<< ": params not found for action:" << action_type << std::endl;
-				continue;
-			}
-			for (auto &param : params) {
-				action.set_param(param, ezxml_attr(xml_action, param.name.c_str()));
-			}
-			if ( action_type.compare("wait") == 0 ) action.do_wait(params);
-			else if ( action_type.compare("call") == 0 ) {
-				SipHeaderVector x_hdrs = SipHeaderVector();
-				for (xml_xhdr = ezxml_child(xml_action, "x-header"); xml_xhdr; xml_xhdr=xml_xhdr->next) {
-					SipHeader sh = SipHeader();
-					sh.hName = ezxml_attr(xml_xhdr, "name");
-					sh.hValue = ezxml_attr(xml_xhdr, "value");
-					if (sh.hValue.compare(0, 7, "VP_ENV_") == 0) {
-						sh.hValue = action.get_env(sh.hValue);
-					}
-					x_hdrs.push_back(sh);
+		const char * for_var = ezxml_attr(xml_actions, "for");
+		const char *s_start, *s_stop, *s_step;
+		int start = 0;
+		int stop = 1;
+		int step = 1;
+		if (for_var) {
+			s_start = ezxml_attr(xml_actions, "start");
+			if (s_start) start = atoi(s_start);
+
+			s_stop = ezxml_attr(xml_actions, "stop");
+			if (s_stop) stop = atoi(s_stop);
+
+			s_step = ezxml_attr(xml_actions, "step");
+			if (s_step) step = atoi(s_step);
+		}
+		for (int i = start; i < stop; i++) {
+			for (xml_action = ezxml_child(xml_actions, "action"); xml_action; xml_action=xml_action->next) {
+				const char * val = ezxml_attr(xml_action,"type");
+				if (!val) {
+					LOG(logERROR) <<__FUNCTION__<<" invalid action !";
+					continue;
 				}
-				action.do_call(params, x_hdrs);
+				string action_type = ezxml_attr(xml_action,"type");;
+				LOG(logINFO) <<__FUNCTION__<< " ===> action/" << action_type;
+				vector<ActionParam> params = action.get_params(action_type);
+				if (params.size() == 0) {
+					LOG(logERROR) <<__FUNCTION__<< ": params not found for action:" << action_type << std::endl;
+					continue;
+				}
+				//TOOD: set iterator param on each action
+				for (auto &param : params) {
+					action.set_param(param, ezxml_attr(xml_action, param.name.c_str()));
+				}
+				if ( action_type.compare("wait") == 0 ) action.do_wait(params);
+				else if ( action_type.compare("call") == 0 ) {
+					SipHeaderVector x_hdrs = SipHeaderVector();
+					for (xml_xhdr = ezxml_child(xml_action, "x-header"); xml_xhdr; xml_xhdr=xml_xhdr->next) {
+						SipHeader sh = SipHeader();
+						sh.hName = ezxml_attr(xml_xhdr, "name");
+						sh.hValue = ezxml_attr(xml_xhdr, "value");
+						if (sh.hValue.compare(0, 7, "VP_ENV_") == 0) {
+							sh.hValue = action.get_env(sh.hValue);
+						}
+						x_hdrs.push_back(sh);
+					}
+					action.do_call(params, x_hdrs);
+				}
+				else if ( action_type.compare("accept") == 0 ) action.do_accept(params);
+				else if ( action_type.compare("register") == 0 ) action.do_register(params);
+				else if ( action_type.compare("alert") == 0 ) action.do_alert(params);
 			}
-			else if ( action_type.compare("accept") == 0 ) action.do_accept(params);
-			else if ( action_type.compare("register") == 0 ) action.do_register(params);
-			else if ( action_type.compare("alert") == 0 ) action.do_alert(params);
 		}
 	}
 }
