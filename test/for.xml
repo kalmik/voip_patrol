@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<config>
+	<actions for="" start="1" stop="10" step="1">
+		<action type="call"
+			label="TEST-TLS" transport="udp"
+			expected_cause_code="200"
+			caller="Alice@127.0.0.1"
+			callee="Bob@127.0.0.1:5071"
+		/>
+		<action type="wait" ms="1000"/>
+	</actions>
+</config>
