@@ -50,6 +50,35 @@ bool Action::set_param(ActionParam &param, const char *val) {
 				param.b_val = true;
 			} else if (param.type == APType::apt_integer) {
 				param.i_val = atoi(val);
+			} else if (param.type == APType::apt_randint) {
+                /* Random int implementation
+                 * the value can assume 3 different forms,
+                 * a single number and it will be fixed
+                 * 2 numbers separated by ':' (min:max) it will be between min and max [min, max[ variance will be 1
+                 * 3 numbers separated by ':' (min:variance:max) it will be between min and max with some variance
+                */
+			    int param_argc = 0;
+			    char *token;
+			    char *copy = (char *) malloc(strlen(val)+1);
+
+			    strcpy(copy, val);
+			    token = strtok(copy, ":");
+
+			    while (token != NULL) {
+			        param.r_val[param_argc] = atoi(token);
+			        token = strtok(NULL, ":");
+			        if (++param_argc > 2) break;
+			    }
+
+			    if (param_argc == 3) {
+			        param.i_val = param.r_val[0] + (( rand() % param.r_val[2] * param.r_val[1]) % (param.r_val[2] - param.r_val[0]));
+			    } else if (param_argc == 2) {
+			        param.i_val = param.r_val[0] + (rand() % (param.r_val[1]- param.r_val[0]));
+			    } else {
+			        param.i_val = param.r_val[0];
+			    }
+
+			    free(copy);
 			} else if (param.type == APType::apt_float) {
 				param.f_val = atof(val);
 			} else {
@@ -83,7 +112,7 @@ void Action::init_actions_params() {
 	do_call_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
 	do_call_params.push_back(ActionParam("min_mos", false, APType::apt_float));
 	do_call_params.push_back(ActionParam("rtp_stats", false, APType::apt_bool));
-	do_call_params.push_back(ActionParam("hangup", false, APType::apt_integer));
+	do_call_params.push_back(ActionParam("hangup", false, APType::apt_randint));
 	do_call_params.push_back(ActionParam("play", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("play_dtmf", false, APType::apt_string));
 	do_call_params.push_back(ActionParam("repeat", false, APType::apt_integer));
@@ -105,7 +134,7 @@ void Action::init_actions_params() {
 	do_accept_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
 	do_accept_params.push_back(ActionParam("ring_duration", false, APType::apt_integer));
 	do_accept_params.push_back(ActionParam("wait_until", false, APType::apt_string));
-	do_accept_params.push_back(ActionParam("hangup", false, APType::apt_integer));
+	do_accept_params.push_back(ActionParam("hangup", false, APType::apt_randint));
 	do_accept_params.push_back(ActionParam("min_mos", false, APType::apt_float));
 	do_accept_params.push_back(ActionParam("rtp_stats", false, APType::apt_bool));
 	do_accept_params.push_back(ActionParam("play", false, APType::apt_string));
