@@ -28,7 +28,7 @@ class Config;
 
 using namespace std;
 
-enum class APType { apt_integer, apt_string, apt_float, apt_bool };
+enum class APType { apt_integer, apt_randint, apt_string, apt_float, apt_bool };
 
 struct ActionParam {
 	ActionParam(string name, bool required, APType type, string s_val="", int i_val=0, float f_val=0.0, bool b_val=false)
@@ -39,6 +39,7 @@ struct ActionParam {
 	string s_val;
 	float f_val;
 	bool b_val;
+	int r_val[3];
 	bool required;
 };
 
