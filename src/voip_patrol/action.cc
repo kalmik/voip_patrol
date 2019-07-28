@@ -55,15 +55,15 @@ bool Action::set_param(ActionParam &param, const char *val) {
                  * the value can assume 3 different forms,
                  * a single number and it will be fixed
                  * 2 numbers separated by ':' (min:max) it will be between min and max [min, max[ variance will be 1
-                 * 3 numbers separated by ':' (min:variance:max) it will be between min and max with some variance
+                 * 3 numbers separated by ':' (min:variance:max) it will be some number between min and max spaced by variance
                 */
 			    int param_argc = 0;
 			    char *token;
-			    char *copy = (char *) malloc(strlen(val)+1);
 
+			    char *copy = (char *) malloc(strlen(val) + 1);
 			    strcpy(copy, val);
-			    token = strtok(copy, ":");
 
+			    token = strtok(copy, ":");
 			    while (token != NULL) {
 			        param.r_val[param_argc] = atoi(token);
 			        token = strtok(NULL, ":");
@@ -79,6 +79,8 @@ bool Action::set_param(ActionParam &param, const char *val) {
 			    }
 
 			    free(copy);
+			    if (token) free(token);
+
 			} else if (param.type == APType::apt_float) {
 				param.f_val = atof(val);
 			} else {
