@@ -134,7 +134,7 @@ void Action::init_actions_params() {
 	do_accept_params.push_back(ActionParam("transport", false, APType::apt_string));
 	do_accept_params.push_back(ActionParam("label", false, APType::apt_string));
 	do_accept_params.push_back(ActionParam("max_duration", false, APType::apt_integer));
-	do_accept_params.push_back(ActionParam("ring_duration", false, APType::apt_integer));
+	do_accept_params.push_back(ActionParam("ring_duration", false, APType::apt_randint));
 	do_accept_params.push_back(ActionParam("wait_until", false, APType::apt_string));
 	do_accept_params.push_back(ActionParam("hangup", false, APType::apt_randint));
 	do_accept_params.push_back(ActionParam("min_mos", false, APType::apt_float));
