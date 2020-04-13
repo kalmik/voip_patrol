@@ -6,7 +6,7 @@ RUN echo "building VoIP Patrol" \
 
 ADD ./pjsua /pjsua
 
-RUN  cd pjsua && ./configure CFLAGS="-DPJSUA_MAX_CONF_PORTS=1024" && make dep && make && make install
+RUN  cd pjsua && ./configure CFLAGS="-DPJSUA_MAX_CONF_PORTS=4096 -DPJSUA_MAX_ACC=100" && make dep && make && make install
 
 ADD . /voip_patrol
 
